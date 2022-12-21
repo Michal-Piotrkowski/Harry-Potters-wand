@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Be like Harry Potter!</title>
+    <link rel="stylesheet" href="./styles/styles.css"/>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="./three.js"></script>
+    <script src="./Plane.js"></script>
+    <script src="./Sphere.js"></script>
+    <script src="./Box.js"></script>
+</head>
+
+<body>
+    <div id="dataDiv">
+        <!-- <h1>WYŚWIETL DANE: </h1> -->
+        <h2 id="dane"></h2>
+        <h1 id="goal">GOAL!</h1>
+        <h1 id="saved">SAVED!</h1>
+    </div>
+    <div id="root"></div>
+    <script>
+        window.addEventListener("load", () => {
+            const ws = new WebSocket('ws://192.168.1.10:1337');
+            ws.onopen = () => {
+                console.log("connected");
+            };
+            ws.onmessage = (e) => {
+                const data = JSON.parse(e.data);
+                if(data.x.toFixed(3) != 0 && data.y.toFixed(3) != 0)
+                    chooseSite(data.x.toFixed(3), Math.abs(data.y.toFixed(3)))
+            };
+            ws.onerror = (e) => {
+                console.log(e.message);
+            };
+            ws.onclose = (e) => {
+                console.log(e.code, e.reason);
+            };
+        });
+
+        let lightHelper
+        let lights = []
+        let changeFloor = false;
+        let deltaTime;
+
+        // let x = setInterval(() => {
+        //     changeFloor = !changeFloor;
+        // }, 1000)
+
+        function goDown(y){
+            if(changeFloor)
+                y -= 1;
+            else{
+                y -= 0;
+            }
+            return y;
+        }
+
+        let directionHorizontal = "N"
+        let directionVertical = "W"
+
+        function chooseSite(x, y){
+            if(y > 0.4){
+                directionHorizontal = "S";
+            }
+            else{
+                directionHorizontal = "N";
+            }
+
+            if(x > 0){
+                directionVertical = "W";
+            }
+            else{
+                directionVertical = "E";
+            }
+        }
+
+        $(document).ready(function () {
+            // scena 3D
+            const scene = new THREE.Scene();
+
+            //KAMERA
+            const camera = new THREE.PerspectiveCamera(
+                45, // kąt patrzenia kamery (FOV - field of view)
+                4 / 3, // proporcje widoku, powinny odpowiadać proporcjom ekranu przeglądarki użytkownika
+                0.1,// minimalna renderowana odległość
+                10000 // maksymalna renderowana odległość od kamery
+            );
+            camera.position.set(400, 300, 400);
+            camera.lookAt(scene.position);
+
+            //RENDER
+            const renderer = new THREE.WebGLRenderer();
+            renderer.setClearColor(0x0066ff);
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            $("#root").append(renderer.domElement);
+
+
+            //PROWADNICE
+            const axes = new THREE.AxesHelper(1000)
+            scene.add(axes)
+
+
+            //PLANSZA
+            const planeGeometry = new THREE.PlaneGeometry(500, 500);
+            const materialPlane = new THREE.MeshPhongMaterial({
+                color: 0xfe2f9d,
+                specular: 0xffffff,
+                shininess: 50,
+                side: THREE.DoubleSide,
+            })
+            
+            // for (let i = 0; i < 10; i++) {
+                let plane = new Plane(500, 500, '0x993db3');
+                scene.add(plane.getPlane());
+                plane.getPlane().position.y = 0
+            // }
+
+            let sphere = new Sphere(100, 64, 32);
+            scene.add(sphere.getSphere());
+            let playerPositions = {x: sphere.getSphere().position.x, y: sphere.getSphere().position.y };
+            sphere.getSphere().position.y = 32;
+
+            const geometry = new THREE.CylinderGeometry(30, 30, 70, 32);
+            const material = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+            const cylinder = new THREE.Mesh(geometry, material);
+            scene.add(cylinder);
+            cylinder.position.y = 35
+            cylinder.position.x = -200
+
+            function onWindowResize() {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            }
+
+                let box = new Box(200, 100, 20);
+                box.getBox().position.y = 50;
+                box.getBox().position.x = -260;
+                box.getBox().position.z = 0;
+                scene.add(box.getBox());
+
+            let goalieDirection = true;
+            
+            function render() {
+                console.log(sphere.getSphere().position.z)
+                console.log(cylinder.position.z - 50)
+                if (sphere.getSphere().position.x > cylinder.position.x - 50 && sphere.getSphere().position.x < cylinder.position.x + 50 &&
+                    sphere.getSphere().position.z > cylinder.position.z - 50 && sphere.getSphere().position.z < cylinder.position.z + 50){
+                    document.getElementById("saved").style.display = "flex";
+                    setTimeout(()=>{
+                        document.getElementById("saved").style.display = "none";
+                    }, 2000)
+                    sphere.getSphere().position.x = 0;
+                    sphere.getSphere().position.z = 0;
+                }
+                if(
+                    sphere.getSphere().position.x >  box.getBox().position.x - 100 && sphere.getSphere().position.x <  box.getBox().position.x + 100 &&
+                    sphere.getSphere().position.z >  box.getBox().position.z - 20 && sphere.getSphere().position.z <  box.getBox().position.z + 20
+                ){
+                    document.getElementById("goal").style.display = "flex";
+                    setTimeout(() => {
+                        document.getElementById("goal").style.display = "none";
+                    }, 2000)
+                    sphere.getSphere().position.x = 0;
+                    sphere.getSphere().position.z = 0;
+                }
+                console.log(sphere.getSphere().position.z)
+                if(sphere.getSphere().position.z > 0){
+                    if(cylinder.position.z < - 100){
+                        goalieDirection = true;
+                    }
+                    else if(cylinder.position.z > - 1){
+                        goalieDirection = false;
+                    }
+                }
+                else{
+                    if (cylinder.position.z > 100) {
+                        goalieDirection = false;
+                    }
+                    else if (cylinder.position.z < 1) {
+                        goalieDirection = true;
+                    }
+                }
+                if (goalieDirection){
+                    cylinder.position.z += 1;
+                }
+                else{
+                    cylinder.position.z -= 1;
+                }
+
+                const start = performance.now();
+                if(sphere.getSphere().position.z > 250 || sphere.getSphere().position.z < -250){
+                    if(sphere.getSphere().position.z > 250){
+                        sphere.getSphere().position.z -= 10 * deltaTime * 10;
+                    }
+                    else if(sphere.getSphere().position.z < -250){
+                        sphere.getSphere().position.z += 10 * deltaTime * 10;
+                    }
+                }
+
+                if (sphere.getSphere().position.x > 250 || sphere.getSphere().position.x < -250) {
+                    if (sphere.getSphere().position.x > 250) {
+                        sphere.getSphere().position.x -= 10 * deltaTime * 10;
+                    }
+                    else if (sphere.getSphere().position.x < -250) {
+                        sphere.getSphere().position.x += 10 * deltaTime * 10;
+                    }
+                }
+                if(directionHorizontal === "S"){
+                    sphere.getSphere().position.z += 0.1;
+                }
+                else{
+                    sphere.getSphere().position.z -= 0.1;
+                }
+
+                if (directionVertical === "W") {
+                    sphere.getSphere().position.x += 0.1;
+                }
+                else {
+                    sphere.getSphere().position.x -= 0.1;
+                }
+                camera.position.y = goDown(camera.position.y);
+                renderer.render(scene, camera);
+                requestAnimationFrame(() => {
+                    deltaTime = (performance.now() - start) / 1000;
+                    render();
+                });
+            }
+
+            // na koniec jednokrotne wykonanie powyższej funkcji
+
+            render();
+        })
+    </script>
+</body>
+</html>

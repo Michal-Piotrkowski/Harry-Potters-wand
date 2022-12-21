@@ -1,0 +1,27 @@
+body{
+    padding: 0;
+    margin: 0;
+}
+
+#root{
+    margin: 0;
+    padding: 0;
+}
+
+#dataDiv{
+    width: 20%;
+    height: 15%;
+    position: absolute;
+    top: 10%;
+    left: 40%;
+    text-align: center;
+    z-index: 1;
+}
+
+#goal{
+    display: none;
+}
+
+#saved{
+    display: none;
+}
